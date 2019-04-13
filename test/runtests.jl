@@ -1,4 +1,4 @@
-using DumbCompleter: DumbCompleter
+using DumbCompleter
 using Test
 
 const DC = DumbCompleter

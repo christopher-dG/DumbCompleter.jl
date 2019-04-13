@@ -1,9 +1,10 @@
 module DumbCompleter
 
+using JSON
 using Pkg
 using Serialization
 
-export activate!, completions
+export ioserver
 
 # A completion.
 struct Leaf
@@ -29,6 +30,7 @@ end
 const EXPORTS = Ref(Tree())
 const MODULES = Ref(Dict{Symbol, Tree}())
 const DEPS = joinpath(dirname(@__DIR__), "deps", "completions")
+const Command = Dict{Symbol, Union{String, Nothing}}
 
 __init__() = try loaddeps!() catch; loadstoredeps!() end
 
@@ -105,7 +107,7 @@ function completions(tr::Tree, s::AbstractString)
     return tr.lf === nothing ? lvs : [tr.lf; lvs]
 end
 
-completions(s::AbstractString) = completions(EXPORTS[], s)
+completions(s::AbstractString, ::Nothing=nothing) = completions(EXPORTS[], s)
 completions(s::AbstractString, m::Module) =
     completions(get(MODULES[], modkey(m), Tree()), s)
 completions(s::AbstractString, m::Symbol) =
@@ -114,11 +116,11 @@ completions(s::AbstractString, m::AbstractString) =
     completions(get(MODULES[], Symbol(m), Tree()), s)
 
 """
-    activate!(path::AbstractString)
+    activate!(path::AbstractString=dirname(Base.current_project))
 
 Activate a project and load all of its modules' completions.
 """
-function activate!(path::AbstractString)
+function activate!(path::AbstractString=dirname(Base.current_project))
     toml = joinpath(path, "Project.toml")
     isfile(toml) || return
     project = open(Pkg.Types.read_project, toml)
@@ -128,5 +130,34 @@ function activate!(path::AbstractString)
     loadmodule!(project.name)
     current === nothing ? Pkg.activate() : Pkg.activate(current)
 end
+
+JSON.lower(lf::Leaf) = Dict(
+    :name => string(lf.name),
+    :type => lf.type <: Function ? :Function : string(lf.type),
+    :module => string(modkey(lf.mod)),
+)
+
+# Print out some JSON with a newline.
+jsonprintln(x) = jsonprintln(stdout, x)
+jsonprintln(io::IO, x) = println(io, sprint(JSON.print, x))
+
+# Run a server that listens to stdin and prints to stdout.
+function ioserver()
+    while isopen(stdin)
+        try
+            c = JSON.parse(readline(); dicttype=Command)
+            jsonprintln(docmd(Val(Symbol(c[:type])), c))
+        catch e
+            isopen(stdin) && jsonprintln((error=sprint(showerror, e), completions=[]))
+        end
+    end
+end
+
+# Do a client command.
+docmd(::Val{t}, ::Command) where t = (error="unknown command type $t", completions=[])
+docmd(::Val{nothing}, ::Command) = (error=":type cannot be null", completions=[])
+docmd(::Val{:activate}, c::Command) = (activate!(c[:path]); (; error=nothing))
+docmd(::Val{:completions}, c::Command) =
+    (error=nothing, completions=completions(c[:text], c[:module]))
 
 end
