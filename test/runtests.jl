@@ -3,6 +3,13 @@ using Test
 
 const DC = DumbCompleter
 
+module Foo
+module Bar
+export x
+const x = 1
+end
+end
+
 @testset "DumbCompleter.jl" begin
     @testset "modkey" begin
         @test DC.modkey(Module(:Foo)) == :Foo
@@ -59,6 +66,15 @@ const DC = DumbCompleter
         ns = map(lf -> lf.name, DC.completions("one", Base))
         @test Set(ns) == Set([:one, :ones, :oneunit])
         ns = map(lf -> lf.name, DC.completions("show"))
-        @test Set(ns) == Set([:show, :showable, :showerror, :show_sexpr])
+        @test Set(ns) == Set([:show, :showable, :showerror])
+    end
+
+    @testset "Submodule loading" begin
+        DC.loadmodule!(Foo)
+        @test haskey(DC.MODULES[], DC.modkey(Foo)) &&
+            haskey(DC.MODULES[], DC.modkey(Foo.Bar))
+        @test !any(lf -> lf.mod === Foo.Bar, DC.completions("x"))
+        @test isempty(DC.completions("x", Foo))
+        @test length(DC.completions("x", Foo.Bar)) == 1
     end
 end

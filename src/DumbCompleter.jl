@@ -21,6 +21,9 @@ struct Tree
     Tree(lf::Union{Leaf, Nothing}=nothing) = new(lf, Dict{Char, Tree}())
 end
 
+Base.show(io::IO, tr::Tree) =
+    print(io, "Completion tree with ", length(leaves(tr)), " entries")
+
 # Stored completions.
 struct Deps
     exports::Tree
@@ -63,26 +66,35 @@ end
 # Compute the normalized module name.
 modkey(m::Module) = Symbol(replace(string(m), "Main." => ""))
 
-# Determined whether a symbol is worth using as a completion.
+# Determines whether a symbol is worth using as a completion.
 cancomplete(m::Module) = s -> cancomplete(s, m)
 cancomplete(s::Symbol, m::Module) = isdefined(m, s) && !startswith(string(s), "#")
 
 # Load a module's names and store them as completions.
-function loadmodule!(m::Module)
-    m in (Main, Base.__toplevel__) && return
+function loadmodule!(m::Module; exports::Bool=true)
+    m === Main && return
     k = modkey(m)
     haskey(MODULES[], k) && return
-    MODULES[][k] = Tree()
+
+    # Populate a tree for this module.
+    MODULES[][k] = tr = Tree()
     ns = filter(cancomplete(m), names(m; all=true, imported=true))
     foreach(ns) do n
         lf = Leaf(n, getfield(m, n))
-        putleaf!(MODULES[][k], lf)
-        Base.isexported(m, n) && putleaf!(EXPORTS[], lf)
+        putleaf!(tr, lf)
+        exports && Base.isexported(m, n) && putleaf!(EXPORTS[], lf)
     end
-    foreach(loadmodule!, map(n -> getfield(m, n), filter(n -> getfield(m, n) isa Module, ns)))
+
+    # Do the same for submodules, but don't fill in exports.
+    children = map(n -> getfield(m, n), filter(n -> getfield(m, n) isa Module, ns))
+    foreach(m -> loadmodule!(m; exports=false), children)
 end
 
-loadmodule!(m::Symbol) = loadmodule!(Module(m))
+function loadmodule!(m::Symbol)
+    @eval import $m
+    return loadmodule!(eval(m))
+end
+
 loadmodule!(m::AbstractString) = loadmodule!(Symbol(m))
 
 # Get all of a tree's completions.
@@ -98,7 +110,7 @@ end
 
 Get completions that begin with `s`.
 """
-function completions(tr::Tree, s::AbstractString)
+function completions(tr::Tree, s::AbstractString)::Vector{Leaf}
     for c in s
         haskey(tr.tr, c) || return Leaf[]
         tr = tr.tr[c]
@@ -108,22 +120,21 @@ function completions(tr::Tree, s::AbstractString)
 end
 
 completions(s::AbstractString, ::Nothing=nothing) = completions(EXPORTS[], s)
+completions(s::AbstractString, m::AbstractString) = completions(s, Symbol(m))
+completions(s::AbstractString, m::Symbol) =
+    completions(s, try eval(m) catch; return Leaf[] end)
 completions(s::AbstractString, m::Module) =
     completions(get(MODULES[], modkey(m), Tree()), s)
-completions(s::AbstractString, m::Symbol) =
-    completions(get(MODULES[], Module(m), Tree()), s)
-completions(s::AbstractString, m::AbstractString) =
-    completions(get(MODULES[], Symbol(m), Tree()), s)
 
 """
-    activate!(path::AbstractString=dirname(Base.current_project))
+    activate!(path::AbstractString=dirname(Base.current_project()))
 
 Activate a project and load all of its modules' completions.
 """
-function activate!(path::AbstractString=dirname(Base.current_project))
+function activate!(path::AbstractString=dirname(Base.current_project()))
     toml = joinpath(path, "Project.toml")
     isfile(toml) || return
-    project = open(Pkg.Types.read_project, toml)
+    project = Pkg.Types.read_project(toml)
     current = Base.current_project()
     Pkg.activate(path)
     foreach(loadmodule!, keys(project.deps))
@@ -133,29 +144,34 @@ end
 
 JSON.lower(lf::Leaf) = Dict(
     :name => string(lf.name),
-    :type => lf.type <: Function ? :Function : string(lf.type),
+    :type => lf.type <: Function ? "Function" : string(lf.type),
     :module => string(modkey(lf.mod)),
 )
 
 # Print out some JSON with a newline.
-jsonprintln(x) = jsonprintln(stdout, x)
 jsonprintln(io::IO, x) = println(io, sprint(JSON.print, x))
 
-# Run a server that listens to stdin and prints to stdout.
-function ioserver()
-    while isopen(stdin)
+"""
+    ioserver(input::IO=stdin, output::IO=stdout)
+
+Run a server that listens to some input and prints to some output.
+This function does not return.
+"""
+function ioserver(input::IO=stdin, output::IO=stdout)
+    while isopen(input)
         try
-            c = JSON.parse(readline(); dicttype=Command)
-            jsonprintln(docmd(Val(Symbol(c[:type])), c))
+            c = JSON.parse(readline(input); dicttype=Command)
+            jsonprintln(output, docmd(Val(Symbol(c[:type])), c))
         catch e
-            isopen(stdin) && jsonprintln((error=sprint(showerror, e), completions=[]))
+            isopen(input) &&
+                jsonprintln(output, (error=sprint(showerror, e), completions=[]))
         end
     end
 end
 
 # Do a client command.
-docmd(::Val{t}, ::Command) where t = (error="unknown command type $t", completions=[])
-docmd(::Val{nothing}, ::Command) = (error=":type cannot be null", completions=[])
+docmd(::Val{T}, ::Command) where T = (error="unknown command type $T", completions=[])
+docmd(::Val{nothing}, ::Command) = (error="type cannot be null", completions=[])
 docmd(::Val{:activate}, c::Command) = (activate!(c[:path]); (; error=nothing))
 docmd(::Val{:completions}, c::Command) =
     (error=nothing, completions=completions(c[:text], c[:module]))
