@@ -3,6 +3,8 @@
 ;;; Commentary:
 ;;; Why does Flycheck always tell me to write this section?
 
+;;; TODO: Module prefixes get deleted, that's bad!
+
 ;;; Code:
 
 (require 'company)
@@ -20,13 +22,11 @@
          (json (json-encode command)))
     (jldc/send-input json)))
 
-
 (defun jldc/backend (command &optional arg &rest ignored)
   "Responds to a company COMMAND with optional ARG and the rest IGNORED."
   (case command
     (interactive (company-begin-backend 'jldc/backend))
-    ;; TODO: A prefix function that also captures the module.
-    (prefix (and (eq major-mode 'julia-mode) (company-grab-symbol)))
+    (prefix (and (eq major-mode 'julia-mode) (jldc/collect-prefix)))
     (candidates (jldc/completions arg))))
 
 (defun jldc/init ()
@@ -37,6 +37,13 @@
            :name jldc/process-name
            :command '("julia" "--project" "-e" "using DumbCompleter; ioserver()")
            :filter (lambda (proc out) (setq jldc/last-result out))))))
+
+(defun jldc/collect-prefix (&optional p acc)
+  "Move backwards to find a completion prefix, around P, reducing to ACC."
+  (let ((c (string (char-before p))))
+    (if (or (equal c ".") (string-match-p "\\w" c))
+        (jldc/collect-prefix (- (or p (point)) 1) (concat c (or acc "")))
+      acc)))
 
 (defun jldc/completions (arg)
   "Get completions for ARG."
