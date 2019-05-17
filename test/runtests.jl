@@ -75,8 +75,12 @@ end
     @testset "activate!" begin
         path = dirname(@__DIR__)
         DC.activate!(path)
+        @test haskey(DC.MODULES[], :DumbCompleter)
+        @test !isempty(DC.MODULES[][:DumbCompleter].tr)
+        @test length(DC.completions("ioserver")) == 1
         @test haskey(DC.MODULES[], :JSON)
         @test !isempty(DC.MODULES[][:JSON].tr)
+        @test length(DC.completions("json")) == 1
     end
 
     @testset "Submodule loading" begin
