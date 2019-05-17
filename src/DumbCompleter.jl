@@ -32,7 +32,7 @@ end
 
 const EXPORTS = Ref(Tree())
 const MODULES = Ref(Dict{Symbol, Tree}())
-const DEPS = joinpath(dirname(@__DIR__), "deps", "completions")
+const DEPS = joinpath(dirname(@__DIR__), "deps", "completions-$VERSION")
 const Command = Dict{Symbol, Union{String, Nothing}}
 
 __init__() = try loaddeps!() catch; loadstoredeps!() end
