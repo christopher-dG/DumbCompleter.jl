@@ -3,7 +3,7 @@
 ;;; Commentary:
 ;;; Why does Flycheck always tell me to write this section?
 
-;;; TODO: Module prefixes get deleted, that's bad!
+;;; TODO: Display the symbol without the module, without overwriting the module.
 
 ;;; Code:
 
@@ -45,6 +45,12 @@
         (jldc/collect-prefix (- (or p (point)) 1) (concat c (or acc "")))
       acc)))
 
+(defun jldc/format-completion (c)
+  "Format completion C."
+  (let ((name (cdr (assq 'name c)))
+        (mod (cdr (assq 'module c))))
+    (concat mod "." name)))
+
 (defun jldc/completions (arg)
   "Get completions for ARG."
   (jldc/init)
@@ -54,7 +60,7 @@
     (let* ((results (json-read-from-string jldc/last-result))
            (err (cdr (assq 'error results)))
            (completions (cdr (assq 'completions results))))
-      (unless err (mapcar (lambda (c) (cdr (assq 'name c))) completions)))))
+      (unless err (mapcar 'jldc/format-completion completions)))))
 
 (defun jldc/send-command (arg)
   "Send a completions request for ARG."
