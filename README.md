@@ -75,7 +75,7 @@ using DumbCompleter
 ioserver()
 ```
 
-Then, send requests to the serer process's standard input as JSON.
+Then, send requests to the server process's standard input as JSON.
 Currently, the available commands are:
 
 - `{"type": "completions", "module": "Module.Name.Or.Null", "text": "prefix_to_complete"}`
