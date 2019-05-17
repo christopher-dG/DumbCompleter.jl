@@ -127,13 +127,12 @@ completions(s::AbstractString, m::Module) =
     completions(get(MODULES[], modkey(m), Tree()), s)
 
 """
-    activate!(path::AbstractString=dirname(Base.current_project()))
+    activate!(path::AbstractString)
 
 Activate a project and load all of its modules' completions.
 """
-function activate!(path::AbstractString=dirname(Base.current_project()))
+function activate!(path::AbstractString)
     toml = joinpath(path, "Project.toml")
-    isfile(toml) || return
     project = Pkg.Types.read_project(toml)
     current = Base.current_project()
     Pkg.activate(path)
@@ -172,7 +171,7 @@ end
 # Do a client command.
 docmd(::Val{T}, ::Command) where T = (error="unknown command type $T", completions=[])
 docmd(::Val{nothing}, ::Command) = (error="type cannot be null", completions=[])
-docmd(::Val{:activate}, c::Command) = (activate!(c[:path]); (; error=nothing))
+docmd(::Val{:activate}, c::Command) = (@async activate!(c[:path]); (; error=nothing))
 docmd(::Val{:completions}, c::Command) =
     (error=nothing, completions=completions(c[:text], c[:module]))
 

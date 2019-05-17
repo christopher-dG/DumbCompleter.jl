@@ -12,6 +12,9 @@ end
 
 @testset "DumbCompleter.jl" begin
     @testset "modkey" begin
+        @test DC.modkey(Foo) == :Foo
+        @test DC.modkey(Foo.Bar) == Symbol("Foo.Bar")
+        @test DC.modkey(Main.Foo.Bar) == Symbol("Foo.Bar")
         @test DC.modkey(Module(:Foo)) == :Foo
         @test DC.modkey(Module(Symbol("Foo.Bar"))) == Symbol("Foo.Bar")
         @test DC.modkey(Module(Symbol("Main.Foo.Bar"))) == Symbol("Foo.Bar")
@@ -67,6 +70,13 @@ end
         @test Set(ns) == Set([:one, :ones, :oneunit])
         ns = map(lf -> lf.name, DC.completions("show"))
         @test Set(ns) == Set([:show, :showable, :showerror])
+    end
+
+    @testset "activate!" begin
+        path = dirname(@__DIR__)
+        DC.activate!(path)
+        @test haskey(DC.MODULES[], :JSON)
+        @test !isempty(DC.MODULES[][:JSON].tr)
     end
 
     @testset "Submodule loading" begin
