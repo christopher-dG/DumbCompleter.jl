@@ -136,9 +136,18 @@ function activate!(path::AbstractString)
     project = Pkg.Types.read_project(toml)
     current = Base.current_project()
     Pkg.activate(path)
-    foreach(loadmodule!, keys(project.deps))
-    loadmodule!(project.name)
+    foreach(loadmodule!, keys(projectdeps(project)))
+    loadmodule!(projectname(project))
     current === nothing ? Pkg.activate() : Pkg.activate(current)
+end
+
+# Pkg's APIs differ between versions.
+if VERSION >= v"1.1"
+    projectdeps(project::Pkg.Types.Project) = project.deps
+    projectname(project::Pkg.Types.Project) = project.name
+else
+    projectdeps(project::Dict) = project["deps"]
+    projectname(project::Dict) = project["name"]
 end
 
 JSON.lower(lf::Leaf) = Dict(
