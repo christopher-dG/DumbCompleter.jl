@@ -32,11 +32,11 @@ end
 
     @testset "putleaf!" begin
         tr = DC.Tree()
-        ab = DC.Leaf(:ab, "foo")
+        ab = DC.Leaf(:ab, "foo", Main)
         DC.putleaf!(tr, ab)
         @test tr.tr['a'].tr['b'].lf == ab
 
-        abcd = DC.Leaf(:abcd, "bar")
+        abcd = DC.Leaf(:abcd, "bar", Main)
         DC.putleaf!(tr, abcd)
         @test tr.tr['a'].tr['b'].lf == ab
         @test tr.tr['a'].tr['b'].tr['c'].tr['d'].lf == abcd
