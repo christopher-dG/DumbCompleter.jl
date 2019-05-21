@@ -13,11 +13,11 @@ julia> using DumbCompleter: completions
 
 julia> leaves = completions("P")
 7-element Array{DumbCompleter.Leaf,1}:
- DumbCompleter.Leaf(:PROGRAM_FILE, String, Core)
- DumbCompleter.Leaf(:Pair, UnionAll, Core)
- DumbCompleter.Leaf(:PartialQuickSort, UnionAll, Core)
- DumbCompleter.Leaf(:PermutedDimsArray, UnionAll, Core)
- DumbCompleter.Leaf(:Pipe, DataType, Core)
+ DumbCompleter.Leaf(:PROGRAM_FILE, String, Base)
+ DumbCompleter.Leaf(:Pair, UnionAll, Base)
+ DumbCompleter.Leaf(:PartialQuickSort, UnionAll, Base)
+ DumbCompleter.Leaf(:PermutedDimsArray, UnionAll, Base)
+ DumbCompleter.Leaf(:Pipe, DataType, Base)
  DumbCompleter.Leaf(:PipeBuffer, typeof(PipeBuffer), Base)
  DumbCompleter.Leaf(:Ptr, UnionAll, Core)
 
@@ -30,7 +30,7 @@ julia> leaf.type
 String
 
 julia> leaf.mod
-Core
+Base
 
 julia> completions("P", Core)  # "Core" or :Core work, too.
 4-element Array{DumbCompleter.Leaf,1}:
@@ -49,12 +49,12 @@ julia> activate!(@__DIR__)
 
 julia> DumbCompleter.completions("js")
 1-element Array{DumbCompleter.Leaf,1}:
- DumbCompleter.Leaf(:json, typeof(json), JSON.Writer)
+ DumbCompleter.Leaf(:json, typeof(JSON.Writer.json), JSON)
 
 julia> DumbCompleter.completions("a", :Pkg)
 2-element Array{DumbCompleter.Leaf,1}:
- DumbCompleter.Leaf(:activate, typeof(Pkg.API.activate), Pkg.API)
- DumbCompleter.Leaf(:add, typeof(Pkg.API.add), Pkg.API)
+ DumbCompleter.Leaf(:activate, typeof(Pkg.API.activate), Pkg)
+ DumbCompleter.Leaf(:add, typeof(Pkg.API.add), Pkg)
 ```
 
 ## Usage (Emacs)

@@ -16,7 +16,7 @@
 
 (defun jldc/activate (path)
   "Activate (load completions of) the project at PATH."
-  (interactive "sPath to package: ")
+  (interactive "DPath to package: ")
   (jldc/init)
   (let* ((command `((type . activate) (path . ,path)))
          (json (json-encode command)))

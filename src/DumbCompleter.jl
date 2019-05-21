@@ -11,7 +11,7 @@ struct Leaf
     name::Symbol
     type::Type
     mod::Module
-    Leaf(n::Symbol, ::T, m::Module=parentmodule(T)) where T = new(n, T, m)
+    Leaf(n::Symbol, ::T, m::Module) where T = new(n, T, m)
 end
 
 # A completion tree.
@@ -80,7 +80,7 @@ function loadmodule!(m::Module; exports::Bool=true)
     MODULES[][k] = tr = Tree()
     ns = filter(cancomplete(m), names(m; all=true, imported=true))
     foreach(ns) do n
-        lf = Leaf(n, getfield(m, n))
+        lf = Leaf(n, getfield(m, n), m)
         putleaf!(tr, lf)
         exports && Base.isexported(m, n) && putleaf!(EXPORTS[], lf)
     end
