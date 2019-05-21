@@ -1,7 +1,7 @@
 name = "DumbCompleter"
 uuid = "b9d245dc-5d95-11e9-326a-bbd03ea8ebff"
 authors = ["Chris de Graaf <chrisadegraaf@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"

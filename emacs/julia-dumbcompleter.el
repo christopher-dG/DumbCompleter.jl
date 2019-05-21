@@ -45,11 +45,13 @@
         (jldc/collect-prefix (- (or p (point)) 1) (concat c (or acc "")))
       acc)))
 
-(defun jldc/format-completion (c)
-  "Format completion C."
+(defun jldc/format-completion (c exported)
+  "Format completion C which might be EXPORTED."
   (let ((name (cdr (assq 'name c)))
         (mod (cdr (assq 'module c))))
-    (concat mod "." name)))
+    (if (eq exported :json-false)
+        (concat mod "." name)
+      name)))
 
 (defun jldc/completions (arg)
   "Get completions for ARG."
@@ -59,8 +61,12 @@
   (when (and (sit-for 0.1) jldc/last-result)
     (let* ((results (json-read-from-string jldc/last-result))
            (err (cdr (assq 'error results)))
-           (completions (cdr (assq 'completions results))))
-      (unless err (mapcar 'jldc/format-completion completions)))))
+           (completions (cdr (assq 'completions results)))
+           (exports (cdr (assq 'exports results))))
+      (unless err
+        (mapcar
+         (lambda (c) (jldc/format-completion c exports))
+         completions)))))
 
 (defun jldc/send-command (arg)
   "Send a completions request for ARG."

@@ -172,16 +172,19 @@ function ioserver(input::IO=stdin, output::IO=stdout)
             jsonprintln(output, docmd(Val(Symbol(c[:type])), c))
         catch e
             isopen(input) &&
-                jsonprintln(output, (error=sprint(showerror, e), completions=[]))
+                jsonprintln(output, (; error=sprint(showerror, e), completions=[]))
         end
     end
 end
 
 # Do a client command.
-docmd(::Val{T}, ::Command) where T = (error="unknown command type $T", completions=[])
-docmd(::Val{nothing}, ::Command) = (error="type cannot be null", completions=[])
+docmd(::Val{T}, ::Command) where T = (; error="unknown command type $T", completions=[])
+docmd(::Val{nothing}, ::Command) = (; error="type cannot be null", completions=[])
 docmd(::Val{:activate}, c::Command) = (@async activate!(c[:path]); (; error=nothing))
-docmd(::Val{:completions}, c::Command) =
-    (error=nothing, completions=completions(c[:text], c[:module]))
+docmd(::Val{:completions}, c::Command) = (;
+    error=nothing,
+    completions=completions(c[:text], c[:module]),
+    exports=c[:module] === nothing,
+)
 
 end
